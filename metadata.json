@@ -1,0 +1,6 @@
+{
+  "name": "Bolão Copa 2026",
+  "description": "Plataforma premium para gerenciamento de bolões da Copa do Mundo FIFA 2026 com rankings, dashboards interativos e suporte a ligas privadas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
