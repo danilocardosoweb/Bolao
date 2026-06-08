@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -85,6 +85,34 @@
   html, body {
     @apply h-full bg-background text-foreground antialiased;
   }
+}
+
+.font-display {
+  font-family: "Bebas Neue", "Space Grotesk", sans-serif;
+  letter-spacing: 0.04em;
+}
+
+.font-ui {
+  font-family: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+.landing-grid {
+  background-image:
+    radial-gradient(circle at 20% 15%, rgba(255, 191, 31, 0.18), transparent 24%),
+    radial-gradient(circle at 80% 25%, rgba(9, 36, 18, 0.58), transparent 28%),
+    linear-gradient(180deg, rgba(7, 27, 14, 0.98), rgba(5, 18, 10, 0.98)),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0, rgba(255, 255, 255, 0.05) 1px, transparent 1px, transparent 72px);
+}
+
+.landing-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 244, 235, 0.96));
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.12);
+}
+
+.landing-card-dark {
+  background: linear-gradient(180deg, rgba(14, 34, 20, 0.9), rgba(7, 20, 11, 0.92));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
 }
 
 .sports-gradient {

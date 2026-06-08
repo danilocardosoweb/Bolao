@@ -9,6 +9,7 @@ export type MatchStage =
 
 export interface ScoreResult {
   points: number;
+  basePoints: number;
   isExact: boolean;
   isWinnerAndGoalDiff: boolean;
   isWinnerOnly: boolean;
@@ -84,7 +85,8 @@ export function calculateMatchScore(
   }
 
   return {
-    points: Math.round(basePoints * multiplier), // Assuming we round or keep decimal. Let's round or just multiply.
+    points: Math.round(basePoints * multiplier),
+    basePoints,
     isExact,
     isWinnerAndGoalDiff,
     isWinnerOnly,
@@ -97,7 +99,7 @@ export function calculateMatchScore(
 
 // Special Predictions Points Config
 export const SPECIAL_PREDICTIONS_POINTS = {
-  CHAMPION: 30,
+  CHAMPION: 20,
   RUNNER_UP: 20,
   TOP_SCORER: 15,
   BEST_PLAYER: 15,

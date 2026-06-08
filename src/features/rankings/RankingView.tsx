@@ -5,8 +5,8 @@ import { useSupabase } from "@/src/lib/supabase-provider";
 import { TrendingUp, TrendingDown, Minus, Crown } from "lucide-react";
 
 export function RankingView() {
-  const { rankings, loading, error } = useSupabase();
-  const currentUser = rankings.length > 0 ? rankings[0] : null;
+  const { rankings, loading, user } = useSupabase();
+  const currentUser = rankings.find((ranking) => ranking.user_id === user?.id) ?? null;
 
   if (loading) {
      return <div className="flex justify-center items-center h-32"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div></div>;
@@ -141,7 +141,7 @@ export function RankingView() {
                 <Badge variant="outline" className="text-white border-slate-600 bg-slate-800/50 font-black">1.0x</Badge>
               </div>
               <div className="flex justify-between items-center p-4">
-                <span className="text-sm font-bold text-slate-300">16 Avos / Oitavas</span>
+                <span className="text-sm font-bold text-slate-300">32 avos / Oitavas</span>
                 <Badge variant="outline" className="text-white border-slate-600 bg-slate-800/50 font-black">1.2x - 1.5x</Badge>
               </div>
               <div className="flex justify-between items-center p-4 bg-indigo-500/10">

@@ -1,4 +1,5 @@
 import { Trophy, CalendarDays, LineChart, LayoutDashboard, Settings } from "lucide-react";
+import { useSupabase } from "@/src/lib/supabase-provider";
 
 interface NavProps {
   activeTab: string;
@@ -36,13 +37,17 @@ export function BottomNav({ activeTab, setActiveTab }: NavProps) {
 }
 
 export function Sidebar({ activeTab, setActiveTab }: NavProps) {
+  const { rankings, isAdmin, user } = useSupabase();
+  const userPoints = rankings.find((ranking) => ranking.user_id === user?.id)?.total_points ?? 0;
+  const progress = Math.min(100, Math.max(0, userPoints / 15));
+
   const navItems = [
     { id: "dashboard", icon: LayoutDashboard, label: "Início" },
     { id: "matches", icon: CalendarDays, label: "Palpites" },
     { id: "ranking", icon: Trophy, label: "Ranking" },
     { id: "stats", icon: LineChart, label: "Estatísticas" },
     { id: "admin", icon: Settings, label: "Admin & API" },
-  ];
+  ].filter((item) => item.id !== "admin" || isAdmin);
 
   return (
     <div className="hidden w-64 flex-col border-r border-slate-700/50 bg-[#1E293B] md:flex">
@@ -50,7 +55,10 @@ export function Sidebar({ activeTab, setActiveTab }: NavProps) {
         <div className="bg-yellow-500 p-1.5 rounded-lg mr-3">
           <Trophy className="w-5 h-5 text-slate-900" />
         </div>
-        <span className="text-xl font-black tracking-tighter uppercase whitespace-nowrap">Bolão <span className="text-yellow-500">Copa 26</span></span>
+        <div className="leading-none">
+          <span className="block text-xl font-black tracking-tighter uppercase whitespace-nowrap">TecnoPerfil</span>
+          <span className="text-[10px] font-black uppercase tracking-[0.24em] text-yellow-500">Bolão Copa 26</span>
+        </div>
       </div>
       <div className="flex-1 py-6 px-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
@@ -75,9 +83,9 @@ export function Sidebar({ activeTab, setActiveTab }: NavProps) {
       <div className="p-6 mt-auto">
         <div className="bg-slate-800/80 rounded-2xl p-4 border border-slate-700 text-left">
           <p className="text-xs text-slate-400 uppercase tracking-widest mb-1 font-bold">Pontuação Total</p>
-          <p className="text-2xl font-black text-white">1.240 <span className="text-sm font-normal text-yellow-500">pts</span></p>
+          <p className="text-2xl font-black text-white">{userPoints.toLocaleString("pt-BR")} <span className="text-sm font-normal text-yellow-500">pts</span></p>
           <div className="mt-3 bg-slate-700 h-1.5 rounded-full overflow-hidden">
-            <div className="bg-yellow-500 h-full w-3/4"></div>
+            <div className="bg-yellow-500 h-full" style={{ width: `${progress}%` }}></div>
           </div>
         </div>
       </div>

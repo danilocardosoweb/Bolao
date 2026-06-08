@@ -73,7 +73,7 @@ export function AdminDashboardView() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-white tracking-tight">Painel Administrativo</h1>
-          <p className="text-slate-400">Controle do motor de sincronização API-Football.</p>
+          <p className="text-slate-400">Controle do motor de sincronização do calendário oficial.</p>
         </div>
         
         <button 
@@ -82,7 +82,7 @@ export function AdminDashboardView() {
           className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-xl flex items-center gap-2 transition-colors self-start md:self-auto shrink-0"
         >
           <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-          Forçar Sincronização
+          Sincronizar Agora
         </button>
       </div>
 

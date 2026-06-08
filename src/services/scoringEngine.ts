@@ -1,10 +1,14 @@
 import { calculateMatchScore, MatchStage } from "../lib/scoring";
 import { supabaseAdmin } from "../lib/supabase-admin";
 
+const FINISHED_MATCH_STATUSES = ['FT', 'AET', 'PEN', 'FINISHED'];
+
 export async function calculateMatchPoints(matchId: string) {
   // 1. Get the match result
   const { data: match } = await supabaseAdmin.from('matches').select('*').eq('id', matchId).single();
   if (!match) return;
+
+  if (!FINISHED_MATCH_STATUSES.includes(match.status)) return;
 
   const realHome = match.home_goals;
   const realAway = match.away_goals;
@@ -16,6 +20,8 @@ export async function calculateMatchPoints(matchId: string) {
   // 2. Get all predictions for this match
   const { data: predictions } = await supabaseAdmin.from('predictions').select('*').eq('match_id', matchId);
   if (!predictions) return;
+
+  await supabaseAdmin.from('audit_points').delete().eq('match_id', matchId);
 
   // 3. Process each prediction
   for (const pred of predictions) {
@@ -38,7 +44,7 @@ export async function calculateMatchPoints(matchId: string) {
     else if (scoreResult.isTieOnly) rule = 'EMPATE';
     else if (scoreResult.isSingleTeamGoals) rule = 'GOLS_1_TIME';
 
-    const basePointsRaw = scoreResult.points / scoreResult.multiplier;
+    const basePointsRaw = scoreResult.basePoints;
 
     // Update Prediction
     await supabaseAdmin.from('predictions').update({
@@ -64,29 +70,32 @@ export async function calculateMatchPoints(matchId: string) {
 }
 
 export async function updateLeaderboard() {
-  const { data: users } = await supabaseAdmin.from('users').select('id');
-  if (!users) return;
+  const { data: scoredPredictions } = await supabaseAdmin
+    .from('predictions')
+    .select('user_id, points_earned, base_points')
+    .eq('status', 'scored');
 
-  for (const user of users) {
-    // Collect stats from predictions
-    const { data: userPreds } = await supabaseAdmin.from('predictions')
-      .select('points_earned, base_points')
-      .eq('user_id', user.id)
-      .eq('status', 'scored');
+  if (!scoredPredictions) return;
 
-    if (!userPreds) continue;
+  const predictionsByUser = new Map<string, typeof scoredPredictions>();
+  for (const prediction of scoredPredictions) {
+    if (!prediction.user_id) continue;
+    const current = predictionsByUser.get(prediction.user_id) || [];
+    current.push(prediction);
+    predictionsByUser.set(prediction.user_id, current);
+  }
 
+  for (const [userId, userPreds] of predictionsByUser) {
     const totalPoints = userPreds.reduce((acc, p) => acc + p.points_earned, 0);
-    // Real implementation would track exact matches (base=10), correct results, ties, etc.
     const exactMatches = userPreds.filter(p => p.base_points === 10).length;
-    const correctResults = userPreds.filter(p => p.base_points === 7).length;
+    const correctResults = userPreds.filter(p => p.base_points === 7 || p.base_points === 5).length;
 
     await supabaseAdmin.from('rankings').upsert({
-      user_id: user.id,
+      user_id: userId,
       total_points: totalPoints,
       exact_matches: exactMatches,
       correct_results: correctResults,
       updated_at: new Date().toISOString()
-    }, { onConflict: 'user_id' }); // adjust based on group vs global
+    }, { onConflict: 'user_id' });
   }
 }

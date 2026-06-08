@@ -1,23 +1,20 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/src/components/ui/card";
-import { Badge } from "@/src/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
-import { Progress } from "@/src/components/ui/progress";
-import { Trophy, TrendingUp, CheckCircle2, XCircle, ChevronRight, Activity, AlertCircle } from "lucide-react";
+import { Trophy, TrendingUp, CheckCircle2, Activity } from "lucide-react";
 import { useSupabase } from "@/src/lib/supabase-provider";
 import { useMemo } from "react";
 
-export function DashboardView() {
-  const { matches, rankings, loading, error } = useSupabase();
+const OPEN_MATCH_STATUSES = ["NS", "TBD", "SCHEDULED", "TIMED"];
 
-  // Pick first user if exists as "logged in" user for demo purposes, 
-  // until actual Auth is fully integrated
-  const currentUser = rankings.length > 0 ? rankings[0] : null; 
-  const userRank = currentUser;
+export function DashboardView() {
+  const { matches, rankings, loading, user } = useSupabase();
+
+  const userRankIndex = rankings.findIndex((ranking) => ranking.user_id === user?.id);
+  const userRank = userRankIndex >= 0 ? rankings[userRankIndex] : null;
+  const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "";
 
   const nextMatch = useMemo(() => {
-     const pending = matches.filter(m => ["NS", "TBD"].includes(m.status));
-     pending.sort((a, b) => new Date(a.match_date).getTime() - new Date(b.match_date).getTime());
-     return pending.length > 0 ? pending[0] : null;
+    const pending = matches.filter((m) => OPEN_MATCH_STATUSES.includes(m.status));
+    pending.sort((a, b) => new Date(a.match_date).getTime() - new Date(b.match_date).getTime());
+    return pending.length > 0 ? pending[0] : null;
   }, [matches]);
 
   if (loading) {
@@ -29,10 +26,10 @@ export function DashboardView() {
       {/* Header/Hero Section */}
       <section className="mb-6 md:mb-8">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-2 text-white">Visão Geral</h1>
-        {currentUser ? (
-          <p className="text-slate-400 text-sm md:text-base">Bem-vindo de volta, {currentUser.user_id.substring(0, 8)}. Acompanhe seu desempenho no Bolão da Copa.</p>
+        {displayName ? (
+          <p className="text-slate-400 text-sm md:text-base">Bem-vindo de volta, {displayName}. Acompanhe seu desempenho no desafio TecnoPerfil da Copa.</p>
         ) : (
-          <p className="text-slate-400 text-sm md:text-base">Acompanhe seu desempenho no Bolão da Copa.</p>
+          <p className="text-slate-400 text-sm md:text-base">Acompanhe seu desempenho no desafio TecnoPerfil da Copa.</p>
         )}
       </section>
 
@@ -45,7 +42,7 @@ export function DashboardView() {
           </div>
           <div className="text-3xl font-black text-white">{userRank?.total_points || 0} <span className="text-sm text-slate-500 font-medium">pts</span></div>
           <div className="text-sm font-bold text-green-400 mt-2 flex items-center">
-            <TrendingUp className="w-4 h-4 mr-1" /> {userRank?.position || 1}º Lugar Oficial
+            <TrendingUp className="w-4 h-4 mr-1" /> {userRank ? `${userRankIndex + 1}º Lugar Oficial` : "Sem pontuação ainda"}
           </div>
         </div>
 
@@ -61,7 +58,7 @@ export function DashboardView() {
             </div>
             <div>
               <div className="text-2xl font-black text-white">{userRank?.correct_results || 0}</div>
-              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Saldo</div>
+              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Corretos</div>
             </div>
           </div>
         </div>
@@ -152,7 +149,9 @@ export function DashboardView() {
                 {rankings.slice(0, 5).map((r, i) => (
                   <div key={r.user_id} className={`p-4 flex items-center ${i === 0 ? 'bg-yellow-500/5 border-l-4 border-yellow-500' : 'border-b border-slate-800 opacity-90'} gap-4`}>
                      <span className={`w-6 text-center font-black ${i === 0 ? 'text-yellow-500' : 'text-slate-400'}`}>{i + 1}º</span>
-                     <div className={`w-10 h-10 rounded-full bg-slate-700 ${i === 0 ? 'border-2 border-yellow-500' : ''} flex items-center justify-center font-bold text-white text-xs`}>UID</div>
+                     <div className={`w-10 h-10 rounded-full bg-slate-700 ${i === 0 ? 'border-2 border-yellow-500' : ''} flex items-center justify-center font-bold text-white text-xs`}>
+                       {r.user_id.slice(0, 2).toUpperCase()}
+                     </div>
                      <div className="flex-1">
                         <p className="font-bold text-sm text-white">{r.user_id.substring(0, 8)}</p>
                      </div>
