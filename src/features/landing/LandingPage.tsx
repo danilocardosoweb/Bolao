@@ -2,20 +2,20 @@ import { useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   BarChart3,
-  CalendarDays,
   ChevronRight,
+  Clock3,
   Crown,
-  Factory,
   Handshake,
+  MapPin,
   Play,
   ShieldCheck,
   Smartphone,
   Sparkles,
   Target,
-  Trophy,
   Users,
   Zap,
 } from "lucide-react";
+import { appLogoSrc } from "@/src/lib/brand";
 import { useSupabase } from "@/src/lib/supabase-provider";
 import { AuthModal } from "@/src/features/auth/AuthModal";
 
@@ -25,6 +25,28 @@ type LandingPageProps = {
 
 const OPEN_MATCH_STATUSES = ["NS", "TBD", "SCHEDULED", "TIMED"];
 const LIVE_MATCH_STATUSES = ["LIVE", "1H", "HT", "2H", "ET", "BT", "P"];
+
+const formatMatchDay = (value: string) =>
+  new Date(value).toLocaleDateString("pt-BR", {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+  });
+
+const formatMatchTime = (value: string) =>
+  new Date(value).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+const getLocalDateKey = (value: string) => {
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
 
 const featureCards = [
   {
@@ -110,11 +132,45 @@ export function LandingPage({ onEnterApp }: LandingPageProps) {
       .slice(0, 3);
   }, [openMatches]);
 
+  const landingScheduleGroups = useMemo(() => {
+    const sourceMatches = [...matches]
+      .sort((a, b) => new Date(a.match_date).getTime() - new Date(b.match_date).getTime())
+      .slice(0, 12);
+
+    const groups = sourceMatches.reduce<
+      Array<{
+        key: string;
+        label: string;
+        matches: typeof sourceMatches;
+      }>
+    >((acc, match) => {
+      const key = getLocalDateKey(match.match_date);
+      const existingGroup = acc.find((group) => group.key === key);
+
+      if (existingGroup) {
+        existingGroup.matches.push(match);
+        return acc;
+      }
+
+      acc.push({
+        key,
+        label: new Date(match.match_date).toLocaleDateString("pt-BR", {
+          weekday: "long",
+          day: "2-digit",
+          month: "long",
+        }),
+        matches: [match],
+      });
+
+      return acc;
+    }, []);
+
+    return groups.slice(0, 4);
+  }, [matches]);
+
   const topRanking = rankings[0];
   const topPoints = topRanking?.total_points ?? 0;
   const topUser = topRanking?.user_id?.slice(0, 8) ?? "AGUARDANDO";
-  const totalMatches = matches.length;
-  const totalTeams = 48;
   const liveCount = liveMatches.length;
   const isAuthenticated = Boolean(session);
 
@@ -153,7 +209,12 @@ export function LandingPage({ onEnterApp }: LandingPageProps) {
   };
 
   const scrollToSection = (target: HTMLDivElement | null) => {
-    target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (!target) {
+      return;
+    }
+
+    const top = target.getBoundingClientRect().top + window.scrollY - 88;
+    window.scrollTo({ top: Math.max(top, 0), behavior: "smooth" });
   };
 
   return (
@@ -164,17 +225,11 @@ export function LandingPage({ onEnterApp }: LandingPageProps) {
             onClick={() => scrollToSection(topRef.current)}
             className="flex items-center gap-3 text-left transition-transform hover:scale-[1.01]"
           >
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#083319] text-[#ffc21f] shadow-[0_18px_40px_rgba(7,27,14,0.22)]">
-              <Trophy className="h-6 w-6" />
-            </div>
-            <div className="leading-none">
-              <div className="font-display text-3xl uppercase tracking-[0.04em] text-[#071b0e]">
-                TecnoPerfil
-              </div>
-              <div className="text-[0.7rem] font-bold uppercase tracking-[0.38em] text-[#d19a00]">
-                Bolao Copa 2026
-              </div>
-            </div>
+            <img
+              src={appLogoSrc}
+              alt="Logo TecnoPerfil Bolao Copa 2026"
+              className="h-14 w-auto object-contain sm:h-16"
+            />
           </button>
 
           <div className="hidden items-center gap-3 md:flex">
@@ -224,41 +279,18 @@ export function LandingPage({ onEnterApp }: LandingPageProps) {
                     Comecar agora
                     <ArrowRight className="h-4 w-4" />
                   </button>
-                  <button
-                    onClick={() => scrollToSection(scheduleRef.current)}
-                    className="inline-flex items-center justify-center gap-3 rounded-2xl border border-[#f8f1df]/30 bg-white/5 px-8 py-4 text-sm font-bold uppercase tracking-[0.14em] text-[#f8f1df] backdrop-blur-sm transition-colors hover:border-[#ffc21f]/60 hover:bg-white/10"
+                  <a
+                    href="#landing-schedule"
+                    className="landing-cta-link inline-flex items-center justify-center gap-3 rounded-2xl border border-[#f8f1df]/30 bg-white/5 px-8 py-4 text-sm font-bold uppercase tracking-[0.14em] text-[#f8f1df] backdrop-blur-sm transition-colors hover:border-[#ffc21f]/60 hover:bg-white/10"
                   >
-                    <Play className="h-4 w-4" />
-                    Ver jogos
-                  </button>
+                    <Play className="landing-cta-link__icon h-4 w-4" />
+                    <span className="landing-cta-link__label">Ver jogos</span>
+                  </a>
                 </div>
 
-                <div className="mt-10 grid gap-3 text-sm font-medium text-[#e6eadf] sm:grid-cols-3">
-                  <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/10 px-4 py-3 backdrop-blur-sm">
-                    <Factory className="h-5 w-5 text-[#ffc21f]" />
-                    <div>
-                      <div className="text-xs uppercase tracking-[0.2em] text-[#adc2b1]">Empresa</div>
-                      <div className="text-base font-bold text-white">TecnoPerfil</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/10 px-4 py-3 backdrop-blur-sm">
-                    <CalendarDays className="h-5 w-5 text-[#ffc21f]" />
-                    <div>
-                      <div className="text-xs uppercase tracking-[0.2em] text-[#adc2b1]">Jogos</div>
-                      <div className="text-base font-bold text-white">{totalMatches || 104}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/10 px-4 py-3 backdrop-blur-sm">
-                    <Crown className="h-5 w-5 text-[#ffc21f]" />
-                    <div>
-                      <div className="text-xs uppercase tracking-[0.2em] text-[#adc2b1]">Fases</div>
-                      <div className="text-base font-bold text-white">Mata-mata multiplica</div>
-                    </div>
-                  </div>
-                </div>
               </div>
 
-              <div ref={scheduleRef} className="relative">
+              <div className="relative">
                 <div className="absolute -left-10 top-12 h-32 w-32 rounded-full bg-[#ffc21f]/20 blur-3xl" />
                 <div className="absolute -right-10 bottom-0 h-40 w-40 rounded-full bg-[#0e3b1c]/70 blur-3xl" />
 
@@ -301,17 +333,10 @@ export function LandingPage({ onEnterApp }: LandingPageProps) {
                             </div>
                             <div className="text-right">
                               <div className="text-sm font-bold text-white">
-                                {new Date(match.match_date).toLocaleDateString("pt-BR", {
-                                  weekday: "short",
-                                  day: "2-digit",
-                                  month: "short",
-                                })}
+                                {formatMatchDay(match.match_date)}
                               </div>
                               <div className="text-xs text-[#9fbc9f]">
-                                {new Date(match.match_date).toLocaleTimeString("pt-BR", {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}{" "}
+                                {formatMatchTime(match.match_date)}{" "}
                                 • {match.stadium}
                               </div>
                             </div>
@@ -344,8 +369,140 @@ export function LandingPage({ onEnterApp }: LandingPageProps) {
                       </div>
                     </div>
                   </div>
+
+                  <a
+                    href="#landing-schedule"
+                    className="landing-cta-link mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#ffc21f]/25 bg-[#ffc21f]/10 px-4 py-3 text-sm font-black uppercase tracking-[0.14em] text-[#ffc21f] transition-colors hover:bg-[#ffc21f]/15"
+                  >
+                    <span className="landing-cta-link__label">Ver agenda completa</span>
+                    <ChevronRight className="landing-cta-link__icon h-4 w-4" />
+                  </a>
                 </div>
               </div>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="landing-schedule"
+          ref={scheduleRef}
+          className="scroll-mt-24 bg-[#091d10] py-16 text-[#f8f1df] sm:py-20"
+        >
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+              <div className="max-w-3xl">
+                <p className="text-xs font-black uppercase tracking-[0.3em] text-[#ffc21f]">
+                  Agenda da competicao
+                </p>
+                <h2 className="mt-4 font-display text-5xl uppercase leading-none text-white sm:text-6xl">
+                  Veja os jogos sem sair da pagina
+                </h2>
+                <p className="mt-5 text-base leading-7 text-[#c7d6c8] sm:text-lg">
+                  O botao agora leva voce para uma agenda mais completa, com dias separados,
+                  horario, estadio e um visual melhor para navegar no celular.
+                </p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 backdrop-blur-sm">
+                  <div className="text-xs font-bold uppercase tracking-[0.24em] text-[#9fbc9f]">
+                    Dias visiveis
+                  </div>
+                  <div className="mt-2 text-3xl font-black text-white">{landingScheduleGroups.length}</div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 backdrop-blur-sm">
+                  <div className="text-xs font-bold uppercase tracking-[0.24em] text-[#9fbc9f]">
+                    Jogos listados
+                  </div>
+                  <div className="mt-2 text-3xl font-black text-white">
+                    {landingScheduleGroups.reduce((total, group) => total + group.matches.length, 0)}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 backdrop-blur-sm">
+                  <div className="text-xs font-bold uppercase tracking-[0.24em] text-[#9fbc9f]">
+                    Desafio interno
+                  </div>
+                  <div className="mt-2 flex items-center gap-2 text-lg font-black uppercase tracking-[0.08em] text-[#ffc21f]">
+                    <Users className="h-4 w-4" />
+                    Time TecnoPerfil
+                  </div>
+                  <div className="mt-2 text-sm font-medium leading-6 text-[#d9e5d7]">
+                    Ranking, resenha e disputa rodada apos rodada.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-10 grid gap-5 xl:grid-cols-2">
+              {landingScheduleGroups.length > 0 ? (
+                landingScheduleGroups.map((group) => (
+                  <article
+                    key={group.key}
+                    className="rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(16,40,24,0.96),rgba(10,23,14,0.98))] p-5 shadow-[0_22px_60px_rgba(0,0,0,0.22)]"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-xs font-black uppercase tracking-[0.28em] text-[#9fbc9f]">
+                          {group.label}
+                        </div>
+                        <h3 className="mt-2 font-display text-3xl uppercase text-white">
+                          {group.matches.length} partidas no dia
+                        </h3>
+                      </div>
+                      <div className="rounded-full border border-[#ffc21f]/25 bg-[#ffc21f]/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-[#ffc21f]">
+                        {liveCount > 0 ? "agenda ativa" : "agenda oficial"}
+                      </div>
+                    </div>
+
+                    <div className="mt-5 space-y-3">
+                      {group.matches.map((match) => (
+                        <div
+                          key={match.id}
+                          className="rounded-2xl border border-white/8 bg-black/15 px-4 py-4"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-xs font-bold uppercase tracking-[0.24em] text-[#9fbc9f]">
+                                {match.group_name || match.stage || "Fase oficial"}
+                              </div>
+                              <div className="mt-2 flex flex-wrap items-center gap-2 text-lg font-black uppercase text-white">
+                                <span>{match.team_a_name || match.team_a_code || "Time A"}</span>
+                                <span className="text-[#ffc21f]">x</span>
+                                <span>{match.team_b_name || match.team_b_code || "Time B"}</span>
+                              </div>
+                            </div>
+
+                            <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-[#ffc21f]">
+                              {LIVE_MATCH_STATUSES.includes(match.status) ? "ao vivo" : "programado"}
+                            </div>
+                          </div>
+
+                          <div className="mt-4 grid gap-2 text-sm text-[#d9e5d7] sm:grid-cols-2">
+                            <div className="flex items-center gap-2">
+                              <Clock3 className="h-4 w-4 text-[#ffc21f]" />
+                              <span>
+                                {formatMatchDay(match.match_date)} • {formatMatchTime(match.match_date)}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4 text-[#ffc21f]" />
+                              <span>
+                                {match.stadium || "Estadio oficial"}
+                                {match.city ? ` • ${match.city}` : ""}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-6 text-base text-[#d9e5d7] xl:col-span-2">
+                  A agenda oficial ainda nao apareceu aqui, mas a landing ja esta pronta para
+                  mostrar os jogos assim que a base terminar de carregar.
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -463,12 +620,12 @@ export function LandingPage({ onEnterApp }: LandingPageProps) {
                     Comecar agora
                 <ChevronRight className="h-4 w-4" />
               </button>
-              <button
-                onClick={() => scrollToSection(scheduleRef.current)}
-                className="inline-flex items-center justify-center gap-3 rounded-2xl border border-white/15 bg-white/5 px-8 py-4 text-sm font-bold uppercase tracking-[0.14em] text-[#f8f1df] backdrop-blur-sm transition-colors hover:bg-white/10"
+              <a
+                href="#landing-schedule"
+                className="landing-cta-link inline-flex items-center justify-center gap-3 rounded-2xl border border-white/15 bg-white/5 px-8 py-4 text-sm font-bold uppercase tracking-[0.14em] text-[#f8f1df] backdrop-blur-sm transition-colors hover:bg-white/10"
               >
-                Ver calendario
-              </button>
+                <span className="landing-cta-link__label">Ver calendario</span>
+              </a>
             </div>
           </div>
         </section>

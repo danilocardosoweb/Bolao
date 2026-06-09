@@ -54,7 +54,7 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const currentEmailLocal = currentEmail.split("@")[0];
 
   const isAdmin =
-    user?.user_metadata?.role === "admin" ||
+    user?.app_metadata?.role === "admin" ||
     adminEmails.includes(currentEmail) ||
     adminEmails.includes(currentEmailLocal);
 
@@ -103,6 +103,19 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  const syncAccountProfile = async (accessToken: string) => {
+    try {
+      await fetch("/api/account/sync-profile", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+    } catch (err) {
+      console.error("Error syncing account profile:", err);
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
 
@@ -146,6 +159,14 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     return () => clearInterval(interval);
   }, [currentUserId]);
+
+  useEffect(() => {
+    if (!session?.access_token) {
+      return;
+    }
+
+    void syncAccountProfile(session.access_token);
+  }, [session?.access_token]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });

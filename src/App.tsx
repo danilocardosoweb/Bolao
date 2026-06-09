@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Sidebar, BottomNav } from './components/navigation';
 import { DashboardView } from './features/dashboard/DashboardView';
 import { MatchesView } from './features/matches/MatchesView';
@@ -6,6 +6,7 @@ import { RankingView } from './features/rankings/RankingView';
 import { AdminDashboardView } from './features/admin/AdminDashboardView';
 import { LandingPage } from './features/landing/LandingPage';
 import { LineChart, PencilLine, Trophy } from 'lucide-react';
+import { appLogoSrc } from './lib/brand';
 import { useSupabase } from './lib/supabase-provider';
 import type { User } from '@supabase/supabase-js';
 
@@ -52,6 +53,22 @@ export default function App() {
     setActiveTab(tab);
   };
 
+  const handleSaveProfile = async () => {
+    setSavingProfile(true);
+    const result = await updateProfileName(profileNameDraft);
+    setSavingProfile(false);
+    if (!result.error) {
+      setAccountMenuOpen(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    setAccountMenuOpen(false);
+    await signOut();
+    setShowLanding(true);
+    setActiveTab("dashboard");
+  };
+
   if (showLanding) {
     return (
       <LandingPage
@@ -95,13 +112,61 @@ export default function App() {
       <main className="flex-1 flex flex-col min-w-0 bg-[#0F172A]">
         <header className="h-16 flex items-center justify-between px-4 md:px-8 shrink-0 md:hidden border-b border-slate-800 bg-[#0F172A]">
           <button className="flex items-center gap-2" onClick={() => setShowLanding(true)}>
-            <div className="bg-yellow-500 p-1 rounded-md">
-              <Trophy className="w-4 h-4 text-slate-900" />
-            </div>
-            <span className="block font-black tracking-tighter uppercase whitespace-nowrap">TecnoPerfil <span className="text-yellow-500">Copa 26</span></span>
+            <img
+              src={appLogoSrc}
+              alt="Logo TecnoPerfil Bolao Copa 2026"
+              className="h-10 w-auto object-contain"
+            />
           </button>
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-500 to-orange-500 flex items-center justify-center overflow-hidden font-bold text-slate-900 text-xs shadow-sm">
-            CP
+          <div className="relative" ref={mobileMenuRef}>
+            <button
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-tr from-yellow-500 to-orange-500 font-bold text-slate-900 text-xs shadow-sm transition-transform active:scale-95"
+              onClick={() => setAccountMenuOpen((current) => !current)}
+              aria-label="Abrir menu da conta"
+            >
+              {initials}
+            </button>
+
+            {accountMenuOpen && (
+              <div className="absolute right-0 top-12 z-50 w-[min(22rem,calc(100vw-2rem))] rounded-3xl border border-slate-700 bg-[#111a2f] p-4 shadow-2xl">
+                <div className="mb-4">
+                  <div className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">Conta</div>
+                  <div className="mt-1 text-base font-bold text-white">{displayName}</div>
+                  <div className="text-sm text-slate-400 break-all">{user?.email}</div>
+                </div>
+
+                <label className="block space-y-2">
+                  <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+                    Nome para exibicao
+                  </span>
+                  <div className="flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900/80 px-3 py-3">
+                    <PencilLine className="h-4 w-4 shrink-0 text-slate-400" />
+                    <input
+                      value={profileNameDraft}
+                      onChange={(event) => setProfileNameDraft(event.target.value)}
+                      className="w-full bg-transparent text-sm font-medium text-white outline-none placeholder:text-slate-500"
+                      placeholder="Seu nome"
+                    />
+                  </div>
+                </label>
+
+                <div className="mt-4 grid gap-3">
+                  <button
+                    className="w-full rounded-2xl bg-yellow-500 px-4 py-3 text-sm font-black uppercase tracking-[0.12em] text-slate-950 transition-transform active:scale-[0.99] disabled:opacity-60"
+                    disabled={savingProfile}
+                    onClick={handleSaveProfile}
+                  >
+                    {savingProfile ? "Salvando..." : "Salvar nome"}
+                  </button>
+                  <button
+                    className="w-full rounded-2xl border border-slate-700 px-4 py-3 text-sm font-bold uppercase tracking-[0.12em] text-white transition-colors hover:bg-slate-800"
+                    onClick={handleSignOut}
+                  >
+                    Sair
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </header>
 
@@ -157,25 +222,13 @@ export default function App() {
                     <button
                       className="flex-1 rounded-2xl bg-yellow-500 px-4 py-3 text-sm font-black uppercase tracking-[0.12em] text-slate-950 transition-transform hover:-translate-y-0.5 disabled:opacity-60"
                       disabled={savingProfile}
-                      onClick={async () => {
-                        setSavingProfile(true);
-                        const result = await updateProfileName(profileNameDraft);
-                        setSavingProfile(false);
-                        if (!result.error) {
-                          setAccountMenuOpen(false);
-                        }
-                      }}
+                      onClick={handleSaveProfile}
                     >
                       {savingProfile ? "Salvando..." : "Salvar nome"}
                     </button>
                     <button
                       className="rounded-2xl border border-slate-700 px-4 py-3 text-sm font-bold uppercase tracking-[0.12em] text-white transition-colors hover:bg-slate-800"
-                      onClick={async () => {
-                        setAccountMenuOpen(false);
-                        await signOut();
-                        setShowLanding(true);
-                        setActiveTab("dashboard");
-                      }}
+                      onClick={handleSignOut}
                     >
                       Sair
                     </button>

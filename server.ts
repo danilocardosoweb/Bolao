@@ -4,6 +4,7 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { syncWorldCupFixtures, getApiUsageStats } from "./src/services/apiFootball";
 import { supabaseAdmin } from "./src/lib/supabase-admin";
+import { buildAdminPredictionsReport } from "./src/services/adminPredictions";
 
 let syncInterval: NodeJS.Timeout | null = null;
 let syncStatus = {
@@ -89,6 +90,57 @@ function setupAutomatedSync() {
   checkAndSync();
 }
 
+function getAdminEmails() {
+  return (process.env.VITE_ADMIN_EMAILS || "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+async function getAuthorizedAdmin(req: express.Request) {
+  const authHeader = req.headers.authorization || "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+
+  if (!token) {
+    return { error: "Token de acesso ausente.", status: 401 as const };
+  }
+
+  const { data, error } = await supabaseAdmin.auth.getUser(token);
+  if (error || !data.user) {
+    return { error: "Sessão inválida para acessar o painel administrativo.", status: 401 as const };
+  }
+
+  const adminEmails = getAdminEmails();
+  const currentEmail = (data.user.email || "").trim().toLowerCase();
+  const currentEmailLocal = currentEmail.split("@")[0];
+  const isAdmin =
+    data.user.app_metadata?.role === "admin" ||
+    adminEmails.includes(currentEmail) ||
+    adminEmails.includes(currentEmailLocal);
+
+  if (!isAdmin) {
+    return { error: "Acesso restrito ao administrador.", status: 403 as const };
+  }
+
+  return { user: data.user, status: 200 as const };
+}
+
+async function getAuthorizedUser(req: express.Request) {
+  const authHeader = req.headers.authorization || "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+
+  if (!token) {
+    return { error: "Token de acesso ausente.", status: 401 as const };
+  }
+
+  const { data, error } = await supabaseAdmin.auth.getUser(token);
+  if (error || !data.user) {
+    return { error: "Sessao invalida.", status: 401 as const };
+  }
+
+  return { user: data.user, status: 200 as const };
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -114,6 +166,76 @@ async function startServer() {
       res.json({ success: true, data: stats, status: syncStatus });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get("/api/admin/predictions", async (req, res) => {
+    try {
+      const auth = await getAuthorizedAdmin(req);
+      if ("error" in auth) {
+        res.status(auth.status).json({ success: false, error: auth.error });
+        return;
+      }
+
+      const report = await buildAdminPredictionsReport();
+      res.json({ success: true, data: report });
+    } catch (error: any) {
+      console.error("[Admin Predictions Error]", error);
+      res.status(500).json({ success: false, error: error.message || "Erro ao montar relatório de palpites." });
+    }
+  });
+
+  app.post("/api/account/sync-profile", async (req, res) => {
+    try {
+      const auth = await getAuthorizedUser(req);
+      if ("error" in auth) {
+        res.status(auth.status).json({ success: false, error: auth.error });
+        return;
+      }
+
+      const email = (auth.user.email || "").trim().toLowerCase();
+      if (!email) {
+        res.status(400).json({ success: false, error: "Usuario sem email valido." });
+        return;
+      }
+
+      const role = auth.user.app_metadata?.role === "admin" ? "admin" : "user";
+
+      const { data: existingUser, error: lookupError } = await supabaseAdmin
+        .from("users")
+        .select("id, email")
+        .eq("email", email)
+        .maybeSingle();
+
+      if (lookupError) {
+        throw lookupError;
+      }
+
+      if (existingUser) {
+        const { error: updateError } = await supabaseAdmin
+          .from("users")
+          .update({
+            id: auth.user.id,
+            email,
+            role,
+          })
+          .eq("email", email);
+
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await supabaseAdmin.from("users").insert({
+          id: auth.user.id,
+          email,
+          role,
+        });
+
+        if (insertError) throw insertError;
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Account Sync Error]", error);
+      res.status(500).json({ success: false, error: error.message || "Erro ao sincronizar cadastro." });
     }
   });
 
